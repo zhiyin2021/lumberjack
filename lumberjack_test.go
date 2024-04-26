@@ -32,7 +32,7 @@ func TestNewFile(t *testing.T) {
 
 	dir := makeTempDir("TestNewFile", t)
 	defer os.RemoveAll(dir)
-	l := &Logger{
+	l := &logger{
 		Filename: logFile(dir),
 	}
 	defer l.Close()
@@ -55,7 +55,7 @@ func TestOpenExisting(t *testing.T) {
 	isNil(err, t)
 	existsWithContent(filename, data, t)
 
-	l := &Logger{
+	l := &logger{
 		Filename: filename,
 	}
 	defer l.Close()
@@ -76,7 +76,7 @@ func TestWriteTooLong(t *testing.T) {
 	megabyte = 1
 	dir := makeTempDir("TestWriteTooLong", t)
 	defer os.RemoveAll(dir)
-	l := &Logger{
+	l := &logger{
 		Filename: logFile(dir),
 		MaxSize:  5,
 	}
@@ -93,11 +93,11 @@ func TestWriteTooLong(t *testing.T) {
 
 func TestMakeLogDir(t *testing.T) {
 	currentTime = fakeTime
-	dir := time.Now().Format("TestMakeLogDir" + backupTimeFormat)
+	dir := time.Now().Format("TestMakeLogDir" + _backupTimeFormat)
 	dir = filepath.Join(os.TempDir(), dir)
 	defer os.RemoveAll(dir)
 	filename := logFile(dir)
-	l := &Logger{
+	l := &logger{
 		Filename: filename,
 	}
 	defer l.Close()
@@ -114,7 +114,7 @@ func TestDefaultFilename(t *testing.T) {
 	dir := os.TempDir()
 	filename := filepath.Join(dir, filepath.Base(os.Args[0])+"-lumberjack.log")
 	defer os.Remove(filename)
-	l := &Logger{}
+	l := &logger{}
 	defer l.Close()
 	b := []byte("boo!")
 	n, err := l.Write(b)
@@ -132,7 +132,7 @@ func TestAutoRotate(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	filename := logFile(dir)
-	l := &Logger{
+	l := &logger{
 		Filename: filename,
 		MaxSize:  10,
 	}
@@ -169,7 +169,7 @@ func TestFirstWriteRotate(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	filename := logFile(dir)
-	l := &Logger{
+	l := &logger{
 		Filename: filename,
 		MaxSize:  10,
 	}
@@ -200,7 +200,7 @@ func TestMaxBackups(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	filename := logFile(dir)
-	l := &Logger{
+	l := &logger{
 		Filename:   filename,
 		MaxSize:    10,
 		MaxBackups: 1,
@@ -352,7 +352,7 @@ func TestCleanupExistingBackups(t *testing.T) {
 	err = ioutil.WriteFile(filename, data, 0644)
 	isNil(err, t)
 
-	l := &Logger{
+	l := &logger{
 		Filename:   filename,
 		MaxSize:    10,
 		MaxBackups: 1,
@@ -382,7 +382,7 @@ func TestMaxAge(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	filename := logFile(dir)
-	l := &Logger{
+	l := &logger{
 		Filename: filename,
 		MaxSize:  10,
 		MaxAge:   1,
@@ -455,7 +455,7 @@ func TestOldLogFiles(t *testing.T) {
 
 	// This gives us a time with the same precision as the time we get from the
 	// timestamp in the name.
-	t1, err := time.Parse(backupTimeFormat, fakeTime().UTC().Format(backupTimeFormat))
+	t1, err := time.Parse(_backupTimeFormat, fakeTime().UTC().Format(_backupTimeFormat))
 	isNil(err, t)
 
 	backup := backupFile(dir)
@@ -464,14 +464,14 @@ func TestOldLogFiles(t *testing.T) {
 
 	newFakeTime()
 
-	t2, err := time.Parse(backupTimeFormat, fakeTime().UTC().Format(backupTimeFormat))
+	t2, err := time.Parse(_backupTimeFormat, fakeTime().UTC().Format(_backupTimeFormat))
 	isNil(err, t)
 
 	backup2 := backupFile(dir)
 	err = ioutil.WriteFile(backup2, data, 07)
 	isNil(err, t)
 
-	l := &Logger{Filename: filename}
+	l := &logger{Filename: filename}
 	files, err := l.oldLogFiles()
 	isNil(err, t)
 	equals(2, len(files), t)
@@ -482,7 +482,7 @@ func TestOldLogFiles(t *testing.T) {
 }
 
 func TestTimeFromName(t *testing.T) {
-	l := &Logger{Filename: "/var/log/myfoo/foo.log"}
+	l := &logger{Filename: "/var/log/myfoo/foo.log"}
 	prefix, ext := l.prefixAndExt()
 
 	tests := []struct {
@@ -510,7 +510,7 @@ func TestLocalTime(t *testing.T) {
 	dir := makeTempDir("TestLocalTime", t)
 	defer os.RemoveAll(dir)
 
-	l := &Logger{
+	l := &logger{
 		Filename:  logFile(dir),
 		MaxSize:   10,
 		LocalTime: true,
@@ -537,7 +537,7 @@ func TestRotate(t *testing.T) {
 
 	filename := logFile(dir)
 
-	l := &Logger{
+	l := &logger{
 		Filename:   filename,
 		MaxBackups: 1,
 		MaxSize:    100, // megabytes
@@ -595,7 +595,7 @@ func TestCompressOnRotate(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	filename := logFile(dir)
-	l := &Logger{
+	l := &logger{
 		Compress: true,
 		Filename: filename,
 		MaxSize:  10,
@@ -644,7 +644,7 @@ func TestCompressOnResume(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	filename := logFile(dir)
-	l := &Logger{
+	l := &logger{
 		Compress: true,
 		Filename: filename,
 		MaxSize:  10,
@@ -696,7 +696,7 @@ func TestJson(t *testing.T) {
 	"compress": true
 }`[1:])
 
-	l := Logger{}
+	l := logger{}
 	err := json.Unmarshal(data, &l)
 	isNil(err, t)
 	equals("foo", l.Filename, t)
@@ -711,7 +711,7 @@ func TestJson(t *testing.T) {
 // It should be based on the name of the test, to keep parallel tests from
 // colliding, and must be cleaned up after the test is finished.
 func makeTempDir(name string, t testing.TB) string {
-	dir := time.Now().Format(name + backupTimeFormat)
+	dir := time.Now().Format(name + _backupTimeFormat)
 	dir = filepath.Join(os.TempDir(), dir)
 	isNilUp(os.Mkdir(dir, 0700), t, 1)
 	return dir
@@ -735,17 +735,17 @@ func logFile(dir string) string {
 }
 
 func backupFile(dir string) string {
-	return filepath.Join(dir, "foobar-"+fakeTime().UTC().Format(backupTimeFormat)+".log")
+	return filepath.Join(dir, "foobar-"+fakeTime().UTC().Format(_backupTimeFormat)+".log")
 }
 
 func backupFileLocal(dir string) string {
-	return filepath.Join(dir, "foobar-"+fakeTime().Format(backupTimeFormat)+".log")
+	return filepath.Join(dir, "foobar-"+fakeTime().Format(_backupTimeFormat)+".log")
 }
 
 // logFileLocal returns the log file name in the given directory for the current
 // fake time using the local timezone.
 func logFileLocal(dir string) string {
-	return filepath.Join(dir, fakeTime().Format(backupTimeFormat))
+	return filepath.Join(dir, fakeTime().Format(_backupTimeFormat))
 }
 
 // fileCount checks that the number of files in the directory is exp.
